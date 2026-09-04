@@ -1,0 +1,2 @@
+import Sidebar from "@/components/Sidebar"; import Header from "@/components/Header"; import RoleGuard from "@/components/RoleGuard";
+export default function DashboardLayout({children}:{children:React.ReactNode}){return <RoleGuard><div className="min-h-screen bg-mist lg:flex"><Sidebar/><div className="min-w-0 flex-1"><Header/><main className="mx-auto w-full max-w-[1700px] p-3 sm:p-5 lg:p-7">{children}</main></div></div></RoleGuard>}
