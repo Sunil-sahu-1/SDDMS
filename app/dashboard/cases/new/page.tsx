@@ -1,37 +1,38 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { casesApi } from "@/services/api";
+import { casesApi, adminApi } from "@/services/api";
 
 const STATUS_OPTIONS = [
-  {
-    value: "OPEN",
-    label: "Open",
-  },
-  {
-    value: "UNDER_INVESTIGATION",
-    label: "Under Investigation",
-  },
-  {
-    value: "CHARGESHEET_FILED",
-    label: "Chargesheet Filed",
-  },
-  {
-    value: "COURT",
-    label: "Court",
-  },
-  {
-    value: "CLOSED",
-    label: "Closed",
-  },
+  { value: "OPEN", label: "Open" },
+  { value: "UNDER_INVESTIGATION", label: "Under Investigation" },
+  { value: "CHARGESHEET_FILED", label: "Chargesheet Filed" },
+  { value: "COURT", label: "Court" },
+  { value: "CLOSED", label: "Closed" },
 ];
+
+type StaffUser = {
+  id: number;
+  username: string;
+  first_name?: string;
+  last_name?: string;
+  department?: string;
+  role: string;
+  is_active: boolean;
+  verification_status?: string;
+};
 
 type ApiErrorLike = {
   message?: string;
   status?: number;
   body?: unknown;
 };
+
+function staffLabel(user: StaffUser) {
+  const name = [user.first_name, user.last_name].filter(Boolean).join(" ");
+  return name ? `${name} (${user.username})` : user.username;
+}
 
 export default function NewCasePage() {
   const router = useRouter();
@@ -42,9 +43,72 @@ export default function NewCasePage() {
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("OPEN");
 
+  const [officers, setOfficers] = useState<StaffUser[]>([]);
+  const [investigators, setInvestigators] = useState<StaffUser[]>([]);
+  const [assignedOfficer, setAssignedOfficer] = useState("");
+  const [assignedInvestigator, setAssignedInvestigator] = useState("");
+  const [loadingStaff, setLoadingStaff] = useState(true);
+  const [staffError, setStaffError] = useState("");
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadStaff = async () => {
+      setLoadingStaff(true);
+      setStaffError("");
+
+      try {
+        const response = await adminApi.users();
+        const users = Array.isArray(response?.data) ? response.data : [];
+
+        const verifiedActiveStaff = users.filter(
+          (user) => user.is_active && user.verification_status === "VERIFIED",
+        );
+
+        if (!mounted) return;
+
+        setOfficers(
+          verifiedActiveStaff.filter(
+            (user) => user.role === "POLICE_OFFICER",
+          ),
+        );
+
+        setInvestigators(
+          verifiedActiveStaff.filter(
+            (user) => user.role === "INVESTIGATOR",
+          ),
+        );
+      } catch (err: unknown) {
+        if (!mounted) return;
+
+        const apiError = err as ApiErrorLike;
+
+        if (apiError.status === 403) {
+          setStaffError(
+            "Only an administrator can load and assign verified staff members.",
+          );
+        } else if (apiError.status === 401) {
+          setStaffError("Your session has expired. Please log in again.");
+        } else if (apiError.message) {
+          setStaffError(apiError.message);
+        } else {
+          setStaffError("Unable to load available staff members.");
+        }
+      } finally {
+        if (mounted) setLoadingStaff(false);
+      }
+    };
+
+    loadStaff();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -57,7 +121,6 @@ export default function NewCasePage() {
     const trimmedTitle = title.trim();
     const trimmedDescription = description.trim();
 
-    // Frontend validation
     if (!trimmedCaseNumber) {
       setError("Case number is required.");
       return;
@@ -76,24 +139,16 @@ export default function NewCasePage() {
     setIsSubmitting(true);
 
     try {
-      /*
-       * IMPORTANT:
-       * The current Django CaseSerializer accepts:
-       * - case_number
-       * - fir_number
-       * - title
-       * - description
-       * - status
-       *
-       * Do NOT send "priority" here because the current backend
-       * serializer/model does not contain a priority field.
-       */
       const payload = {
         case_number: trimmedCaseNumber,
         fir_number: trimmedFirNumber || trimmedCaseNumber,
         title: trimmedTitle,
         description: trimmedDescription,
         status,
+        assigned_officer: assignedOfficer ? Number(assignedOfficer) : null,
+        assigned_investigator: assignedInvestigator
+          ? Number(assignedInvestigator)
+          : null,
       };
 
       console.log("Creating case:", payload);
@@ -104,7 +159,6 @@ export default function NewCasePage() {
 
       setSuccess("Case created successfully.");
 
-      // Give the user a moment to see the success state.
       setTimeout(() => {
         router.push("/dashboard/cases");
         router.refresh();
@@ -113,7 +167,6 @@ export default function NewCasePage() {
       console.error("Case creation failed:", err);
 
       const apiError = err as ApiErrorLike;
-
       let message = "Unable to create the case.";
 
       if (typeof apiError?.message === "string" && apiError.message.trim()) {
@@ -122,16 +175,12 @@ export default function NewCasePage() {
         message = err;
       }
 
-      /*
-       * Handle common Django REST Framework validation responses.
-       */
       if (
         apiError?.body &&
         typeof apiError.body === "object" &&
         apiError.body !== null
       ) {
         const body = apiError.body as Record<string, unknown>;
-
         const possibleMessages: string[] = [];
 
         Object.entries(body).forEach(([field, value]) => {
@@ -157,7 +206,7 @@ export default function NewCasePage() {
 
       if (apiError?.status === 403) {
         message =
-          "You do not have permission to create a case. Please use a verified staff or administrator account.";
+          "You do not have permission to create a case. Please use a verified administrator account.";
       }
 
       if (apiError?.status === 404) {
@@ -183,7 +232,6 @@ export default function NewCasePage() {
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
-        {/* Header */}
         <div className="mb-8">
           <p className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-indigo-600">
             Case Intake
@@ -211,23 +259,19 @@ export default function NewCasePage() {
           </div>
         </div>
 
-        {/* Main form card */}
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <form onSubmit={handleSubmit}>
-            {/* Form header */}
             <div className="border-b border-slate-200 px-6 py-5 sm:px-8">
               <h2 className="text-lg font-semibold text-slate-900">
                 Case information
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
-                Enter the basic information required to create the case
-                record.
+                Enter the basic information required to create the case record.
               </p>
             </div>
 
             <div className="space-y-7 px-6 py-7 sm:px-8">
-              {/* Error */}
               {error && (
                 <div
                   role="alert"
@@ -251,15 +295,12 @@ export default function NewCasePage() {
                 </div>
               )}
 
-              {/* Success */}
               {success && (
                 <div
                   role="status"
                   className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4"
                 >
-                  <p className="font-semibold text-emerald-800">
-                    {success}
-                  </p>
+                  <p className="font-semibold text-emerald-800">{success}</p>
 
                   <p className="mt-1 text-sm text-emerald-700">
                     Redirecting to the cases page...
@@ -267,7 +308,6 @@ export default function NewCasePage() {
                 </div>
               )}
 
-              {/* Case / FIR information */}
               <section>
                 <div className="mb-4">
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-800">
@@ -276,14 +316,12 @@ export default function NewCasePage() {
                 </div>
 
                 <div className="grid gap-5 md:grid-cols-2">
-                  {/* Case number */}
                   <div>
                     <label
                       htmlFor="caseNumber"
                       className="mb-2 block text-sm font-semibold text-slate-700"
                     >
-                      Case Number
-                      <span className="ml-1 text-red-500">*</span>
+                      Case Number<span className="ml-1 text-red-500">*</span>
                     </label>
 
                     <input
@@ -291,9 +329,7 @@ export default function NewCasePage() {
                       name="case_number"
                       type="text"
                       value={caseNumber}
-                      onChange={(event) =>
-                        setCaseNumber(event.target.value)
-                      }
+                      onChange={(event) => setCaseNumber(event.target.value)}
                       placeholder="e.g. CASE-2026-001"
                       autoComplete="off"
                       disabled={isSubmitting}
@@ -301,7 +337,6 @@ export default function NewCasePage() {
                     />
                   </div>
 
-                  {/* FIR number */}
                   <div>
                     <label
                       htmlFor="firNumber"
@@ -315,9 +350,7 @@ export default function NewCasePage() {
                       name="fir_number"
                       type="text"
                       value={firNumber}
-                      onChange={(event) =>
-                        setFirNumber(event.target.value)
-                      }
+                      onChange={(event) => setFirNumber(event.target.value)}
                       placeholder="e.g. FIR-01"
                       autoComplete="off"
                       disabled={isSubmitting}
@@ -327,7 +360,6 @@ export default function NewCasePage() {
                 </div>
               </section>
 
-              {/* Case details */}
               <section>
                 <div className="mb-4">
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-800">
@@ -336,14 +368,12 @@ export default function NewCasePage() {
                 </div>
 
                 <div className="space-y-5">
-                  {/* Title */}
                   <div>
                     <label
                       htmlFor="title"
                       className="mb-2 block text-sm font-semibold text-slate-700"
                     >
-                      Case Title
-                      <span className="ml-1 text-red-500">*</span>
+                      Case Title<span className="ml-1 text-red-500">*</span>
                     </label>
 
                     <input
@@ -358,7 +388,6 @@ export default function NewCasePage() {
                     />
                   </div>
 
-                  {/* Description */}
                   <div>
                     <label
                       htmlFor="description"
@@ -372,9 +401,7 @@ export default function NewCasePage() {
                       id="description"
                       name="description"
                       value={description}
-                      onChange={(event) =>
-                        setDescription(event.target.value)
-                      }
+                      onChange={(event) => setDescription(event.target.value)}
                       placeholder="Provide a concise description of the case, incident, and relevant background."
                       rows={7}
                       disabled={isSubmitting}
@@ -382,14 +409,102 @@ export default function NewCasePage() {
                     />
 
                     <p className="mt-2 text-xs text-slate-500">
-                      Include only information appropriate for the initial
-                      case record.
+                      Include only information appropriate for the initial case
+                      record.
                     </p>
                   </div>
                 </div>
               </section>
 
-              {/* Status */}
+              <section>
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-800">
+                    Assignment
+                  </h3>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    Assign verified active staff members responsible for the
+                    case and investigation.
+                  </p>
+                </div>
+
+                {staffError && (
+                  <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    {staffError}
+                  </div>
+                )}
+
+                <div className="grid gap-5 md:grid-cols-2">
+                  <div>
+                    <label
+                      htmlFor="assignedOfficer"
+                      className="mb-2 block text-sm font-semibold text-slate-700"
+                    >
+                      Assigned Officer
+                    </label>
+
+                    <select
+                      id="assignedOfficer"
+                      name="assigned_officer"
+                      value={assignedOfficer}
+                      onChange={(event) => setAssignedOfficer(event.target.value)}
+                      disabled={isSubmitting || loadingStaff}
+                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    >
+                      <option value="">
+                        {loadingStaff ? "Loading officers..." : "Unassigned"}
+                      </option>
+
+                      {officers.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {staffLabel(user)}
+                          {user.department ? ` — ${user.department}` : ""}
+                        </option>
+                      ))}
+                    </select>
+
+                    <p className="mt-2 text-xs text-slate-500">
+                      Only active, verified police officers are shown.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="assignedInvestigator"
+                      className="mb-2 block text-sm font-semibold text-slate-700"
+                    >
+                      Assigned Investigation Officer
+                    </label>
+
+                    <select
+                      id="assignedInvestigator"
+                      name="assigned_investigator"
+                      value={assignedInvestigator}
+                      onChange={(event) =>
+                        setAssignedInvestigator(event.target.value)
+                      }
+                      disabled={isSubmitting || loadingStaff}
+                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    >
+                      <option value="">
+                        {loadingStaff ? "Loading investigators..." : "Unassigned"}
+                      </option>
+
+                      {investigators.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {staffLabel(user)}
+                          {user.department ? ` — ${user.department}` : ""}
+                        </option>
+                      ))}
+                    </select>
+
+                    <p className="mt-2 text-xs text-slate-500">
+                      Only active, verified investigators are shown.
+                    </p>
+                  </div>
+                </div>
+              </section>
+
               <section>
                 <div className="mb-4">
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-800">
@@ -426,20 +541,18 @@ export default function NewCasePage() {
                 </div>
               </section>
 
-              {/* Backend note */}
               <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-4">
                 <p className="text-sm font-semibold text-indigo-900">
                   Controlled case creation
                 </p>
 
                 <p className="mt-1 text-sm leading-6 text-indigo-800">
-                  The case will be submitted to the Django API and recorded
-                  in the case history/audit workflow.
+                  The case will be submitted to the Django API and recorded in
+                  the case history/audit workflow.
                 </p>
               </div>
             </div>
 
-            {/* Footer */}
             <div className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-6 py-5 sm:flex-row sm:items-center sm:justify-end sm:px-8">
               <button
                 type="button"
