@@ -12,33 +12,43 @@ import {
 } from "lucide-react";
 
 import PageHeader from "@/components/PageHeader";
-import { complaintsApi } from "@/services/api";
+import { authApi, complaintsApi } from "@/services/api";
 import { pick, statusTone, dateLabel } from "@/lib/format";
 
 type Complaint = Record<string, any>;
+type CurrentUser = Record<string, any>;
 
 export default function Complaints() {
   const [rows, setRows] = useState<Complaint[]>([]);
+  const [user, setUser] = useState<CurrentUser | null>(null);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const isNormalUser = user?.role === "NORMAL_USER";
+
   useEffect(() => {
     let mounted = true;
 
-    const loadComplaints = async () => {
+    const load = async () => {
       setLoading(true);
       setError("");
 
       try {
-        const response: any = await complaintsApi.list();
+        const [userResponse, complaintResponse]: any[] = await Promise.all([
+          authApi.me(),
+          complaintsApi.list(),
+        ]);
 
         if (!mounted) return;
 
-        const data = Array.isArray(response)
-          ? response
-          : response?.results ?? [];
+        const currentUser = userResponse?.data ?? userResponse;
+        const data = Array.isArray(complaintResponse)
+          ? complaintResponse
+          : complaintResponse?.results ?? [];
 
+        setUser(currentUser);
+        localStorage.setItem("sddms_user", JSON.stringify(currentUser));
         setRows(data);
       } catch (err) {
         console.error("Failed to load complaints:", err);
@@ -52,13 +62,11 @@ export default function Complaints() {
             : "Unable to load complaints.",
         );
       } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+        if (mounted) setLoading(false);
       }
     };
 
-    loadComplaints();
+    load();
 
     return () => {
       mounted = false;
@@ -67,7 +75,6 @@ export default function Complaints() {
 
   const filteredRows = useMemo(() => {
     const search = q.trim().toLowerCase();
-
     if (!search) return rows;
 
     return rows.filter((row) =>
@@ -78,11 +85,9 @@ export default function Complaints() {
   const submittedCount = rows.filter(
     (r) => pick(r, "status") === "SUBMITTED",
   ).length;
-
   const underReviewCount = rows.filter(
     (r) => pick(r, "status") === "UNDER_REVIEW",
   ).length;
-
   const resolvedCount = rows.filter((r) =>
     ["CLOSED", "REJECTED"].includes(pick(r, "status")),
   ).length;
@@ -92,7 +97,11 @@ export default function Complaints() {
       <PageHeader
         eyebrow="Intake"
         title="Complaints"
-        description="Review submitted complaints and their current status."
+        description={
+          isNormalUser
+            ? "View your submitted complaints and their current status."
+            : "Review submitted complaints and their current status."
+        }
         action={{
           label: "Register complaint",
           icon: <Plus size={17} />,
@@ -166,7 +175,9 @@ export default function Complaints() {
         <div className="border-b border-slate-100 px-5 py-4">
           <h2 className="font-semibold text-slate-900">Submitted complaints</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Complaint records include the normal user's submitted account information.
+            {isNormalUser
+              ? "Only your complaint records and current statuses are shown."
+              : "Complaint records include the normal user's submitted account information."}
           </p>
         </div>
 
@@ -199,7 +210,7 @@ export default function Complaints() {
                   <th>Complainant</th>
                   <th>Status</th>
                   <th>Created</th>
-                  <th>Case</th>
+                  {!isNormalUser && <th>Case</th>}
                 </tr>
               </thead>
 
@@ -245,9 +256,9 @@ export default function Complaints() {
                           </div>
                           <div className="min-w-0">
                             <p className="font-medium text-slate-800">
-                              {complainantName || "Unknown user"}
+                              {isNormalUser ? "You" : complainantName || "Unknown user"}
                             </p>
-                            {complainantUsername && complainantUsername !== complainantName && (
+                            {!isNormalUser && complainantUsername && complainantUsername !== complainantName && (
                               <p className="mt-0.5 text-xs text-slate-400">@{complainantUsername}</p>
                             )}
                           </div>
@@ -260,17 +271,19 @@ export default function Complaints() {
 
                       <td>{dateLabel(row.created_at)}</td>
 
-                      <td>
-                        {caseNumber ? (
-                          <span className="font-medium text-slate-700">
-                            {typeof caseNumber === "object"
-                              ? pick(caseNumber, "case_number", "number", "id")
-                              : caseNumber}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">Not converted</span>
-                        )}
-                      </td>
+                      {!isNormalUser && (
+                        <td>
+                          {caseNumber ? (
+                            <span className="font-medium text-slate-700">
+                              {typeof caseNumber === "object"
+                                ? pick(caseNumber, "case_number", "number", "id")
+                                : caseNumber}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">Not converted</span>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
