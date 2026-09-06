@@ -63,7 +63,9 @@ export default function NewCasePage() {
 
       try {
         const response = await adminApi.users();
-        const users = Array.isArray(response?.data) ? response.data : [];
+        const users: StaffUser[] = Array.isArray(response?.data)
+          ? (response.data as StaffUser[])
+          : [];
 
         const verifiedActiveStaff = users.filter(
           (user) => user.is_active && user.verification_status === "VERIFIED",
@@ -464,7 +466,7 @@ export default function NewCasePage() {
                     </select>
 
                     <p className="mt-2 text-xs text-slate-500">
-                      Only active, verified police officers are shown.
+                      Only active, verified police officers are listed.
                     </p>
                   </div>
 
@@ -473,7 +475,7 @@ export default function NewCasePage() {
                       htmlFor="assignedInvestigator"
                       className="mb-2 block text-sm font-semibold text-slate-700"
                     >
-                      Assigned Investigation Officer
+                      Assigned Investigator
                     </label>
 
                     <select
@@ -499,61 +501,14 @@ export default function NewCasePage() {
                     </select>
 
                     <p className="mt-2 text-xs text-slate-500">
-                      Only active, verified investigators are shown.
+                      Only active, verified investigators are listed.
                     </p>
                   </div>
                 </div>
               </section>
-
-              <section>
-                <div className="mb-4">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-800">
-                    Initial status
-                  </h3>
-                </div>
-
-                <div className="max-w-md">
-                  <label
-                    htmlFor="status"
-                    className="mb-2 block text-sm font-semibold text-slate-700"
-                  >
-                    Case Status
-                  </label>
-
-                  <select
-                    id="status"
-                    name="status"
-                    value={status}
-                    onChange={(event) => setStatus(event.target.value)}
-                    disabled={isSubmitting}
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-                  >
-                    {STATUS_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-
-                  <p className="mt-2 text-xs text-slate-500">
-                    New cases normally start with Open status.
-                  </p>
-                </div>
-              </section>
-
-              <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-4">
-                <p className="text-sm font-semibold text-indigo-900">
-                  Controlled case creation
-                </p>
-
-                <p className="mt-1 text-sm leading-6 text-indigo-800">
-                  The case will be submitted to the Django API and recorded in
-                  the case history/audit workflow.
-                </p>
-              </div>
             </div>
 
-            <div className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-6 py-5 sm:flex-row sm:items-center sm:justify-end sm:px-8">
+            <div className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-6 py-5 sm:flex-row sm:justify-end sm:px-8">
               <button
                 type="button"
                 onClick={handleCancel}
@@ -566,7 +521,7 @@ export default function NewCasePage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSubmitting ? "Creating case..." : "Create case"}
               </button>
