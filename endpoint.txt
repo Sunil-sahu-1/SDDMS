@@ -1,0 +1,382 @@
+============================================================
+LAW ENFORCEMENT DMS
+API ENDPOINTS
+============================================================
+
+Base URL:
+http://127.0.0.1:8000
+
+Authentication:
+Most protected endpoints require an authenticated user/token.
+
+============================================================
+1. ACCOUNTS / AUTHENTICATION
+============================================================
+
+REGISTER
+POST /api/accounts/register/
+
+CURRENT USER
+GET /api/accounts/me/
+
+STAFF ACCESS TEST
+GET /api/accounts/staff-test/
+
+POLICE OFFICER ACCESS TEST
+GET /api/accounts/police-test/
+
+INVESTIGATOR ACCESS TEST
+GET /api/accounts/investigator-test/
+
+LEGAL OFFICER ACCESS TEST
+GET /api/accounts/legal-test/
+
+ADMIN ACCESS TEST
+GET /api/accounts/admin-test/
+
+
+============================================================
+2. CASES
+============================================================
+
+LIST CASES
+GET /api/cases/
+
+CREATE CASE
+POST /api/cases/
+
+RETRIEVE CASE
+GET /api/cases/<id>/
+
+UPDATE CASE
+PUT /api/cases/<id>/
+
+PARTIAL UPDATE CASE
+PATCH /api/cases/<id>/
+
+DELETE /api/cases/<id>/
+
+
+NOTE:
+Additional Case custom actions depend on the current
+cases/views.py and cases/urls.py implementation.
+
+
+============================================================
+3. COMPLAINTS
+============================================================
+
+LIST COMPLAINTS
+GET /api/complaints/
+
+CREATE COMPLAINT
+POST /api/complaints/
+
+RETRIEVE COMPLAINT
+GET /api/complaints/<id>/
+
+UPDATE COMPLAINT
+PUT /api/complaints/<id>/
+
+PARTIAL UPDATE COMPLAINT
+PATCH /api/complaints/<id>/
+
+DELETE COMPLAINT
+DELETE /api/complaints/<id>/
+
+
+NOTE:
+Additional Complaint custom actions depend on the current
+complaints/views.py and complaints/urls.py implementation.
+
+
+============================================================
+4. DOCUMENTS
+============================================================
+
+LIST DOCUMENTS
+GET /api/documents/
+
+UPLOAD DOCUMENT
+POST /api/documents/
+
+RETRIEVE DOCUMENT
+GET /api/documents/<id>/
+
+UPDATE DOCUMENT
+PUT /api/documents/<id>/
+
+PARTIAL UPDATE DOCUMENT
+PATCH /api/documents/<id>/
+
+DELETE /api/documents/<id>/
+
+
+DOWNLOAD DOCUMENT
+GET /api/documents/<id>/download/
+
+DOCUMENT VERSION HISTORY
+GET /api/documents/<id>/versions/
+
+UPLOAD NEW DOCUMENT VERSION
+POST /api/documents/<id>/new-version/
+
+VERIFY DOCUMENT INTEGRITY
+GET /api/documents/<id>/verify-integrity/
+
+
+============================================================
+5. EVIDENCE
+============================================================
+
+LIST EVIDENCE
+GET /api/evidence/
+
+UPLOAD EVIDENCE
+POST /api/evidence/
+
+RETRIEVE EVIDENCE
+GET /api/evidence/<id>/
+
+UPDATE EVIDENCE
+PUT /api/evidence/<id>/
+
+PARTIAL UPDATE EVIDENCE
+PATCH /api/evidence/<id>/
+
+DELETE EVIDENCE
+DELETE /api/evidence/<id>/
+
+
+DOWNLOAD EVIDENCE
+GET /api/evidence/<id>/download/
+
+VERIFY EVIDENCE INTEGRITY
+GET /api/evidence/<id>/verify-integrity/
+
+
+============================================================
+6. WITNESS STATEMENTS
+============================================================
+
+LIST WITNESS STATEMENTS
+GET /api/evidence/witness-statements/
+
+CREATE WITNESS STATEMENT
+POST /api/evidence/witness-statements/
+
+RETRIEVE WITNESS STATEMENT
+GET /api/evidence/witness-statements/<id>/
+
+UPDATE WITNESS STATEMENT
+PUT /api/evidence/witness-statements/<id>/
+
+PARTIAL UPDATE WITNESS STATEMENT
+PATCH /api/evidence/witness-statements/<id>/
+
+ARCHIVE WITNESS STATEMENT
+DELETE /api/evidence/witness-statements/<id>/
+
+
+============================================================
+7. LEGAL REVIEWS
+============================================================
+
+LIST LEGAL REVIEWS
+GET /api/legal/reviews/
+
+CREATE LEGAL REVIEW
+POST /api/legal/reviews/
+
+RETRIEVE LEGAL REVIEW
+GET /api/legal/reviews/<id>/
+
+UPDATE LEGAL REVIEW
+PUT /api/legal/reviews/<id>/
+
+PARTIAL UPDATE LEGAL REVIEW
+PATCH /api/legal/reviews/<id>/
+
+ARCHIVE LEGAL REVIEW
+DELETE /api/legal/reviews/<id>/
+
+
+APPROVE LEGAL REVIEW
+POST /api/legal/reviews/<id>/approve/
+
+REJECT LEGAL REVIEW
+POST /api/legal/reviews/<id>/reject/
+
+
+============================================================
+8. COURT HEARINGS
+============================================================
+
+LIST COURT HEARINGS
+GET /api/legal/hearings/
+
+CREATE COURT HEARING
+POST /api/legal/hearings/
+
+RETRIEVE COURT HEARING
+GET /api/legal/hearings/<id>/
+
+UPDATE COURT HEARING
+PUT /api/legal/hearings/<id>/
+
+PARTIAL UPDATE COURT HEARING
+PATCH /api/legal/hearings/<id>/
+
+ARCHIVE / CANCEL COURT HEARING
+DELETE /api/legal/hearings/<id>/
+
+
+COMPLETE COURT HEARING
+POST /api/legal/hearings/<id>/complete/
+
+
+============================================================
+9. AUDIT
+============================================================
+
+Audit logging is currently integrated into the following
+operations:
+
+DOCUMENT UPLOAD
+DOCUMENT DOWNLOAD
+DOCUMENT VERSION UPLOAD
+DOCUMENT VERSION HISTORY VIEW
+DOCUMENT INTEGRITY VERIFICATION
+
+EVIDENCE UPLOAD
+EVIDENCE DOWNLOAD
+EVIDENCE INTEGRITY VERIFICATION
+
+WITNESS STATEMENT CREATE
+WITNESS STATEMENT UPDATE
+WITNESS STATEMENT ARCHIVE
+
+LEGAL REVIEW CREATE
+LEGAL REVIEW UPDATE
+LEGAL REVIEW ARCHIVE
+LEGAL REVIEW APPROVE
+LEGAL REVIEW REJECT
+
+COURT HEARING CREATE
+COURT HEARING UPDATE
+COURT HEARING ARCHIVE
+COURT HEARING COMPLETE
+
+
+AUDIT API:
+Not yet confirmed/implemented as a separate public API.
+
+
+============================================================
+10. DASHBOARD / REPORTING
+============================================================
+
+Dashboard API:
+PENDING
+
+Possible future endpoints:
+
+GET /api/dashboard/
+
+GET /api/dashboard/statistics/
+
+GET /api/dashboard/cases/
+
+GET /api/dashboard/evidence/
+
+GET /api/dashboard/documents/
+
+GET /api/dashboard/hearings/
+
+These endpoints should only be added after implementation.
+
+
+============================================================
+11. API DOCUMENTATION
+============================================================
+
+Swagger / OpenAPI:
+PENDING
+
+Possible future endpoints:
+
+GET /api/schema/
+
+GET /api/docs/
+
+GET /api/redoc/
+
+
+============================================================
+12. HTTP METHODS SUMMARY
+============================================================
+
+GET
+Used for retrieving data.
+
+POST
+Used for creating records and custom actions.
+
+PUT
+Used for complete updates.
+
+PATCH
+Used for partial updates.
+
+DELETE
+Used for deletion/archiving depending on the ViewSet.
+
+
+============================================================
+13. ROLE ACCESS
+============================================================
+
+ADMIN
+- Full administrative access according to permissions.
+- Access to legal records.
+- Access to assigned application modules.
+
+NORMAL_USER
+- Access to permitted complaint/case/document resources.
+- No Legal Officer-only operations.
+
+POLICE_OFFICER
+- Access to assigned cases.
+- Access to assigned evidence.
+- Access to permitted witness statements.
+
+INVESTIGATOR
+- Access to assigned investigation cases.
+- Access to assigned evidence.
+- Access to permitted witness statements.
+
+LEGAL_OFFICER
+- Access to legal reviews.
+- Access to court hearings.
+- Legal module operations according to permissions.
+
+
+============================================================
+14. IMPORTANT SECURITY RULE
+============================================================
+
+Never rely only on the endpoint URL for authorization.
+
+Every protected API must validate:
+- Authentication
+- User role
+- Case ownership/assignment
+- Object-level permission
+- Archived status where applicable
+
+Sensitive operations should also generate audit logs.
+
+
+============================================================
+END OF API ENDPOINT DOCUMENT
+============================================================
