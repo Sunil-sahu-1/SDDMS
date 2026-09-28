@@ -12,6 +12,8 @@ const NORMAL_USER_ROUTES = [
   "/dashboard/complaints/new",
 ];
 
+const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+
 export default function RoleGuard({
   children,
 }: {
@@ -25,7 +27,22 @@ export default function RoleGuard({
     let mounted = true;
 
     const run = async () => {
-      // Do not render protected dashboard pages until a token exists.
+      if (DEMO_MODE) {
+        const demoUser = {
+          id: 0,
+          username: "prototype-demo",
+          first_name: "Prototype",
+          last_name: "User",
+          role: "ADMIN",
+          is_demo: true,
+        };
+
+        localStorage.setItem("sddms_user", JSON.stringify(demoUser));
+
+        if (mounted) setReady(true);
+        return;
+      }
+
       const token = localStorage.getItem("sddms_access_token");
 
       if (!token) {
@@ -39,17 +56,14 @@ export default function RoleGuard({
 
         if (!mounted) return;
 
-        localStorage.setItem(
-          "sddms_user",
-          JSON.stringify(user),
-        );
+        localStorage.setItem("sddms_user", JSON.stringify(user));
 
         if (
           user?.role === "NORMAL_USER" &&
           !NORMAL_USER_ROUTES.some(
             (allowedPath) =>
               path === allowedPath ||
-              path.startsWith(`${allowedPath}/`),
+              path.startsWith(allowedPath + "/"),
           )
         ) {
           router.replace("/dashboard");
