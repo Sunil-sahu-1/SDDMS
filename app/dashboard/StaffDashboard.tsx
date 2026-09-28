@@ -56,7 +56,23 @@ export default function StaffDashboard() {
       try {
         let d: Dash;
 
-        if (currentRole === "ADMIN") {
+        if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
+          d = {
+            cases: 24,
+            active: 11,
+            documents: 86,
+            evidence: 42,
+            pending: 6,
+            integrity: 98,
+            securityScore: 98,
+            docs: [],
+            activity: [
+              { id: 1, action: "Prototype mode", description: "Dashboard is running with demonstration data.", created_at: new Date().toISOString() },
+              { id: 2, action: "Access control", description: "Role-based workspace loaded successfully.", created_at: new Date().toISOString() },
+              { id: 3, action: "Integrity verification", description: "Demonstration security checks are operational.", created_at: new Date().toISOString() },
+            ],
+          };
+        } else if (currentRole === "ADMIN") {
           const [dashboardResult, documentsResult] = await Promise.all([
             adminApi.dashboard(),
             documentsApi.list(),
