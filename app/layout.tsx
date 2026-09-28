@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import AssistantBot from "../components/AssistantBot";
+import PrototypeNotice from "../components/PrototypeNotice";
 
 export const metadata: Metadata = {
   title: "Secure DMS",
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <AssistantBot />
+        <PrototypeNotice />
       </body>
     </html>
   );
